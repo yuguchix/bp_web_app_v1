@@ -54,14 +54,18 @@ function excelSerialDateToDate(value) {
   if (!Number.isFinite(serial)) return "";
 
   // Excel (Windows) の日付シリアルを Date に変換する。
-  // Excel は 1900 年をうるう年と誤認する歴史的バグがあるため、
-  // 便宜上基準日を 1899-12-30 として計算する方法が互換性が高い。
-  // また、小数部は時刻を表すのでミリ秒まで反映する。
-  const excelEpochUtc = Date.UTC(1899, 11, 30); // 1899-12-30
-  const days = Math.floor(serial);
-  const frac = serial - days;
-  const ms = Math.round(frac * 86400 * 1000);
-  const date = new Date(excelEpochUtc + days * 86400 * 1000 + ms);
+  // - Excel のシリアルは 1899-12-30 を基準とする（Excel の歴史的な互換性扱い）。
+  // - Excel は 1900 年うるう年バグ（シリアル 60 が存在する）を持つため、
+  //   シリアルが 60 以上の場合は日数を 1 日引く。
+  // - 小数部は時刻を表す（1.5 -> 12:00）のでミリ秒まで反映する。
+  const excelEpoch = Date.UTC(1899, 11, 30); // 1899-12-30 UTC
+  let days = Math.floor(serial);
+  const frac = serial - Math.floor(serial);
+  // Excel の 1900 年バグ補正（シリアル 60 は存在しない日）
+  if (days >= 60) days -= 1;
+  const msFromDays = days * 86400 * 1000;
+  const msFromFrac = Math.round(frac * 86400 * 1000);
+  const date = new Date(excelEpoch + msFromDays + msFromFrac);
   return formatDateLocal(date);
 }
 
