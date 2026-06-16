@@ -100,11 +100,27 @@ async function loadRecords() {
     return true;
   } catch (err) {
     console.error(err);
-    // PostgREST のテーブル未検出エラーを分かりやすく表示
+    // 簡易診断: REST エンドポイントへ直接フェッチして詳細を確認
+    try {
+      const url = `${SUPABASE_URL.replace(/\/$/, '')}/rest/v1/${TABLE_NAME}?select=*`;
+      const res = await fetch(url, {
+        method: 'GET',
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${SUPABASE_ANON_KEY}`
+        }
+      });
+      console.warn('Diagnostic fetch to', url, 'status', res.status);
+      const text = await res.text();
+      console.warn('Diagnostic response body:', text.slice(0, 2000));
+      statusEl.textContent = `読み込みエラー: REST ${res.status} - 開発者コンソール参照`;
+    } catch (diagErr) {
+      console.error('Diagnostic fetch failed', diagErr);
+      statusEl.textContent = `読み込みエラー: ${err.message || err}`;
+    }
+    // PostgREST のテーブル未検出エラーならヒント表示
     if (err && err.code === "PGRST205" && err.hint) {
-      statusEl.textContent = `テーブルが見つかりません: ${err.message || err}. ${err.hint}`;
-    } else {
-      statusEl.textContent = `エラー: ${err.message || err}`;
+      statusEl.textContent += ` (${err.hint})`;
     }
     return false;
   }
