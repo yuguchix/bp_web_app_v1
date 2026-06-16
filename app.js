@@ -5,6 +5,15 @@ const statusEl = document.getElementById("status");
 const tableBody = document.querySelector("#recordsTable tbody");
 const form = document.getElementById("bpForm");
 
+// Supabase 設定（必要に応じて変更してください）
+const SUPABASE_URL = "https://agomsalvejvuuskjvhds.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_cT19NXsteZNyHp5QIZ-Mpg_doRfcUmm";
+const TABLE_NAME = "bp_records"; // 実際のテーブル名に合わせてください
+
+const supabase = (typeof supabase !== "undefined" && supabase.createClient)
+  ? supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+  : null;
+
 function setDefaultDateTime() {
   const now = new Date();
   const yyyy = now.getFullYear();
@@ -45,6 +54,54 @@ function addRecord(date, period, time, systolic, diastolic, pulse) {
   if (!date) return;
   if (systolic === null && diastolic === null && pulse === null) return;
   records.push({ date, period, time, systolic, diastolic, pulse });
+}
+
+async function loadRecords() {
+  statusEl.textContent = "読み込み中...";
+  try {
+    if (!supabase) throw new Error("Supabase クライアントが初期化されていません。");
+    const { data, error } = await supabase.from(TABLE_NAME).select("*").order("date", { ascending: true }).order("time", { ascending: true });
+    if (error) throw error;
+    records = (data || []).map((r) => ({
+      date: r.date || "",
+      period: r.period || (r.is_morning ? "朝" : "夜") || "",
+      time: r.time || "",
+      systolic: r.systolic ?? null,
+      diastolic: r.diastolic ?? null,
+      pulse: r.pulse ?? null
+    }));
+    records.sort((a, b) => `${a.date} ${a.time || "99:99"} ${a.period}`.localeCompare(`${b.date} ${b.time || "99:99"} ${b.period}`));
+    renderTable();
+    renderChart();
+    setNextInputFromRecords();
+    statusEl.textContent = `${records.length}件を読み込みました`;
+    return true;
+  } catch (err) {
+    console.error(err);
+    statusEl.textContent = `エラー: ${err.message || err}`;
+    return false;
+  }
+}
+
+async function saveRecordToSupabase(record) {
+  try {
+    if (!supabase) throw new Error("Supabase クライアントが初期化されていません。");
+    const payload = {
+      date: record.date,
+      period: record.period,
+      time: record.time,
+      systolic: record.systolic,
+      diastolic: record.diastolic,
+      pulse: record.pulse
+    };
+    const { error } = await supabase.from(TABLE_NAME).insert(payload);
+    if (error) throw error;
+    return true;
+  } catch (err) {
+    console.error(err);
+    statusEl.textContent = `保存エラー: ${err.message || err}`;
+    return false;
+  }
 }
 
 function setNextInputFromRecords() {
@@ -132,25 +189,28 @@ function setupTabs() {
 
 form.addEventListener("submit", (event) => {
   event.preventDefault();
-  const period = document.getElementById("period").value === "morning" ? "朝" : "夜";
-  addRecord(
-    document.getElementById("date").value,
-    period,
-    document.getElementById("time").value,
-    toNumber(document.getElementById("systolic").value),
-    toNumber(document.getElementById("diastolic").value),
-    toNumber(document.getElementById("pulse").value)
-  );
+  (async () => {
+    const period = document.getElementById("period").value === "morning" ? "朝" : "夜";
+    const record = {
+      date: document.getElementById("date").value,
+      period,
+      time: document.getElementById("time").value,
+      systolic: toNumber(document.getElementById("systolic").value),
+      diastolic: toNumber(document.getElementById("diastolic").value),
+      pulse: toNumber(document.getElementById("pulse").value)
+    };
 
-  records.sort((a, b) => `${a.date} ${a.time || "99:99"} ${a.period}`.localeCompare(`${b.date} ${b.time || "99:99"} ${b.period}`));
-  renderTable();
-  renderChart();
-  form.reset();
-  setNextInputFromRecords();
+    statusEl.textContent = "保存中...";
+    const ok = await saveRecordToSupabase(record);
+    if (!ok) return;
+
+    form.reset();
+    await loadRecords();
+    alert("保存しました");
+  })();
 });
 
 setupTabs();
 setDefaultDateTime();
-renderTable();
-renderChart();
-setNextInputFromRecords();
+// 初期読み込みはSupabaseから
+loadRecords();
