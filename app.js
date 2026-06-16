@@ -9,7 +9,7 @@ const form = document.getElementById("bpForm");
 const SUPABASE_URL = "https://agomsalvejvuuskjvhds.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_cT19NXsteZNyHp5QIZ-Mpg_doRfcUmm";
 // 実際のテーブル名に合わせてください。
-const TABLE_NAME = "blood_pressuer_records"; // 正しいテーブル名
+const TABLE_NAME = "blood_pressure_records"; // server suggested name
 
 let supabaseClient = (typeof window !== "undefined" && window.supabase && window.supabase.createClient)
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
