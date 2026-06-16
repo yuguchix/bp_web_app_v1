@@ -8,7 +8,8 @@ const form = document.getElementById("bpForm");
 // Supabase 設定（必要に応じて変更してください）
 const SUPABASE_URL = "https://agomsalvejvuuskjvhds.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_cT19NXsteZNyHp5QIZ-Mpg_doRfcUmm";
-const TABLE_NAME = "bp_records"; // 実際のテーブル名に合わせてください
+// 実際のテーブル名に合わせてください。サーバが示唆するならそれを使います。
+const TABLE_NAME = "blood_pressure_records"; // 例: "blood_pressure_records"
 
 const supabaseClient = (typeof window !== "undefined" && window.supabase && window.supabase.createClient)
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
@@ -78,7 +79,12 @@ async function loadRecords() {
     return true;
   } catch (err) {
     console.error(err);
-    statusEl.textContent = `エラー: ${err.message || err}`;
+    // PostgREST のテーブル未検出エラーを分かりやすく表示
+    if (err && err.code === "PGRST205" && err.hint) {
+      statusEl.textContent = `テーブルが見つかりません: ${err.message || err}. ${err.hint}`;
+    } else {
+      statusEl.textContent = `エラー: ${err.message || err}`;
+    }
     return false;
   }
 }
@@ -99,7 +105,11 @@ async function saveRecordToSupabase(record) {
     return true;
   } catch (err) {
     console.error(err);
-    statusEl.textContent = `保存エラー: ${err.message || err}`;
+    if (err && err.code === "PGRST205" && err.hint) {
+      statusEl.textContent = `保存エラー: ${err.message || err}. ${err.hint}`;
+    } else {
+      statusEl.textContent = `保存エラー: ${err.message || err}`;
+    }
     return false;
   }
 }
