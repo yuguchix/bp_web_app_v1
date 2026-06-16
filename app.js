@@ -1,8 +1,10 @@
 const EXCEL_FILE = "Blood_Pressuer.xlsx";
 const SHEET_NAME = "記録";
+const START_ROW = 3; // Excel上のB3から記録開始
 
 let records = [];
 let chart = null;
+let originalRecordsCount = 0;
 
 const statusEl = document.getElementById("status");
 const tableBody = document.querySelector("#recordsTable tbody");
@@ -17,18 +19,31 @@ function setDefaultDateTime() {
   document.getElementById("time").value = now.toTimeString().slice(0, 5);
 }
 
+function formatDateLocal(date) {
+  const yyyy = date.getFullYear();
+  const mm = String(date.getMonth() + 1).padStart(2, "0");
+  const dd = String(date.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+function formatDateUTC(date) {
+  const yyyy = date.getUTCFullYear();
+  const mm = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const dd = String(date.getUTCDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+}
+
 function excelSerialDateToDate(value) {
   if (value === undefined || value === null || value === "") return "";
 
-  if (value instanceof Date) {
-    return formatDate(value);
-  }
+  if (value instanceof Date) return formatDateLocal(value);
 
   if (typeof value === "string") {
     const trimmed = value.trim();
-    if (/^\d{4}[-/]\d{1,2}[-/]\d{1,2}/.test(trimmed)) {
-      const date = new Date(trimmed.replaceAll("/", "-"));
-      if (!Number.isNaN(date.getTime())) return formatDate(date);
+    if (!trimmed) return "";
+    const match = trimmed.match(/^(\d{4})[\/-](\d{1,2})[\/-](\d{1,2})/);
+    if (match) {
+      return `${match[1]}-${String(match[2]).padStart(2, "0")}-${String(match[3]).padStart(2, "0")}`;
     }
     const serial = Number(trimmed);
     if (!Number.isNaN(serial)) return excelSerialDateToDate(serial);
@@ -38,18 +53,10 @@ function excelSerialDateToDate(value) {
   const serial = Number(value);
   if (!Number.isFinite(serial)) return "";
 
-  // Excelの1900日付シリアル値をJavaScriptの日付へ変換
-  const utcDays = serial - 25569;
-  const utcValue = utcDays * 86400;
-  const date = new Date(utcValue * 1000);
-  return formatDate(date);
-}
-
-function formatDate(date) {
-  const yyyy = date.getUTCFullYear();
-  const mm = String(date.getUTCMonth() + 1).padStart(2, "0");
-  const dd = String(date.getUTCDate()).padStart(2, "0");
-  return `${yyyy}-${mm}-${dd}`;
+  // Excel 1900日付シリアル。UTCで計算して日付ズレを避ける。
+  const utcDays = Math.floor(serial - 25569);
+  const date = new Date(utcDays * 86400 * 1000);
+  return formatDateUTC(date);
 }
 
 function normalizeTime(value) {
@@ -67,6 +74,7 @@ function normalizeTime(value) {
   }
 
   const text = String(value).trim();
+  if (!text) return "";
   const match = text.match(/(\d{1,2})[:時](\d{1,2})?/);
   if (match) {
     return `${String(match[1]).padStart(2, "0")}:${String(match[2] || "0").padStart(2, "0")}`;
@@ -76,37 +84,63 @@ function normalizeTime(value) {
 
 function toNumber(value) {
   if (value === undefined || value === null || value === "") return null;
-  const number = Number(String(value).replace(/[Ａ-Ｚａ-ｚ０-９]/g, (s) => String.fromCharCode(s.charCodeAt(0) - 0xfee0)));
+  const normalized = String(value).replace(/[Ａ-Ｚａ-ｚ０-９]/g, (s) => String.fromCharCode(s.charCodeAt(0) - 0xfee0));
+  const number = Number(normalized);
   return Number.isFinite(number) ? number : null;
 }
 
-function addRecord(date, period, time, systolic, diastolic, pulse) {
+function getCellValue(sheet, address) {
+  const cell = sheet[address];
+  if (!cell) return "";
+  return cell.v ?? "";
+}
+
+function getCellDisplay(sheet, address) {
+  const cell = sheet[address];
+  if (!cell) return "";
+  return cell.w ?? cell.v ?? "";
+}
+
+function addRecord(date, period, time, systolic, diastolic, pulse, sourceRow) {
   if (!date) return;
   if (systolic === null && diastolic === null && pulse === null) return;
-  records.push({ date, period, time, systolic, diastolic, pulse });
+  records.push({ date, period, time, systolic, diastolic, pulse, sourceRow });
 }
 
 function parseRecordSheet(sheet) {
-  const rows = XLSX.utils.sheet_to_json(sheet, {
-    header: 1,
-    defval: "",
-    raw: true,
-    blankrows: false
-  });
-
   records = [];
 
-  // 添付Excelは1行目が空、2行目に見出し、B列から記録が始まる構造。
-  // B:日付 C:朝時間 D:朝最高 E:朝最低 F:朝心拍 G:夜時間 H:夜最高 I:夜最低 J:夜心拍
-  rows.forEach((row, index) => {
-    if (index < 2) return;
+  if (!sheet["!ref"]) return;
+  const range = XLSX.utils.decode_range(sheet["!ref"]);
 
-    const date = excelSerialDateToDate(row[1]);
-    if (!date) return;
+  // Blood_Pressuer.xlsx の「記録」シートは以下の固定レイアウト。
+  // B列:日付 / C-F列:朝（時間,最高,最低,心拍） / G-J列:夜（時間,最高,最低,心拍）
+  // データ開始はB3。B25の2026/6/16朝まで読み取り、夜欄が空なら朝だけ表示する。
+  for (let row = START_ROW; row <= range.e.r + 1; row += 1) {
+    const rawDate = getCellValue(sheet, `B${row}`);
+    const date = excelSerialDateToDate(rawDate);
+    if (!date) continue;
 
-    addRecord(date, "朝", normalizeTime(row[2]), toNumber(row[3]), toNumber(row[4]), toNumber(row[5]));
-    addRecord(date, "夜", normalizeTime(row[6]), toNumber(row[7]), toNumber(row[8]), toNumber(row[9]));
-  });
+    addRecord(
+      date,
+      "朝",
+      normalizeTime(getCellValue(sheet, `C${row}`) || getCellDisplay(sheet, `C${row}`)),
+      toNumber(getCellValue(sheet, `D${row}`)),
+      toNumber(getCellValue(sheet, `E${row}`)),
+      toNumber(getCellValue(sheet, `F${row}`)),
+      row
+    );
+
+    addRecord(
+      date,
+      "夜",
+      normalizeTime(getCellValue(sheet, `G${row}`) || getCellDisplay(sheet, `G${row}`)),
+      toNumber(getCellValue(sheet, `H${row}`)),
+      toNumber(getCellValue(sheet, `I${row}`)),
+      toNumber(getCellValue(sheet, `J${row}`)),
+      row
+    );
+  }
 }
 
 async function loadExcel() {
@@ -126,19 +160,48 @@ async function loadExcel() {
 
     parseRecordSheet(sheet);
 
-    records.sort((a, b) => `${a.date} ${a.time} ${a.period}`.localeCompare(`${b.date} ${b.time} ${b.period}`));
+    records.sort((a, b) => `${a.date} ${a.time || "99:99"} ${a.period}`.localeCompare(`${b.date} ${b.time || "99:99"} ${b.period}`));
+    originalRecordsCount = records.length;
     renderTable();
     renderChart();
+    setNextInputFromRecords();
 
     const firstDate = records[0]?.date || "";
     const lastDate = records[records.length - 1]?.date || "";
+    const lastRow = Math.max(...records.map((record) => record.sourceRow || 0));
     statusEl.textContent = records.length
-      ? `${records.length}件を読み込みました（${firstDate} 〜 ${lastDate}）`
-      : "記録が見つかりませんでした";
+      ? `${records.length}件を読み込みました（B${START_ROW}開始 / 最終行B${lastRow} / ${firstDate} 〜 ${lastDate}）`
+      : "記録が見つかりませんでした。B3:J列の記録を確認してください。";
   } catch (error) {
     statusEl.textContent = `エラー: ${error.message}`;
     console.error(error);
   }
+}
+
+function setNextInputFromRecords() {
+  if (!records.length) {
+    setDefaultDateTime();
+    return;
+  }
+
+  const dateSet = [...new Set(records.map((record) => record.date))].sort();
+  const lastDate = dateSet[dateSet.length - 1];
+  const hasMorning = records.some((record) => record.date === lastDate && record.period === "朝");
+  const hasNight = records.some((record) => record.date === lastDate && record.period === "夜");
+
+  const periodEl = document.getElementById("period");
+  const dateEl = document.getElementById("date");
+  dateEl.value = lastDate;
+
+  // 最終日が朝だけなら、次の入力候補は同日の夜。
+  if (hasMorning && !hasNight) {
+    periodEl.value = "night";
+  } else {
+    periodEl.value = "morning";
+  }
+
+  const now = new Date();
+  document.getElementById("time").value = now.toTimeString().slice(0, 5);
 }
 
 function renderTable() {
@@ -246,15 +309,16 @@ form.addEventListener("submit", (event) => {
     document.getElementById("time").value,
     toNumber(document.getElementById("systolic").value),
     toNumber(document.getElementById("diastolic").value),
-    toNumber(document.getElementById("pulse").value)
+    toNumber(document.getElementById("pulse").value),
+    null
   );
 
-  records.sort((a, b) => `${a.date} ${a.time} ${a.period}`.localeCompare(`${b.date} ${b.time} ${b.period}`));
+  records.sort((a, b) => `${a.date} ${a.time || "99:99"} ${a.period}`.localeCompare(`${b.date} ${b.time || "99:99"} ${b.period}`));
   renderTable();
   renderChart();
-  statusEl.textContent = `${records.length}件を表示中（一時追加を含む。Excelには未保存）`;
+  statusEl.textContent = `${records.length}件を表示中（Excel読込${originalRecordsCount}件 + 一時追加${records.length - originalRecordsCount}件。Excelには未保存）`;
   form.reset();
-  setDefaultDateTime();
+  setNextInputFromRecords();
 });
 
 document.getElementById("reloadButton").addEventListener("click", loadExcel);
