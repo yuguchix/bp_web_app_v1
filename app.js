@@ -10,8 +10,8 @@ const SUPABASE_URL = "https://agomsalvejvuuskjvhds.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_cT19NXsteZNyHp5QIZ-Mpg_doRfcUmm";
 const TABLE_NAME = "bp_records"; // 実際のテーブル名に合わせてください
 
-const supabase = (typeof supabase !== "undefined" && supabase.createClient)
-  ? supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+const supabaseClient = (typeof window !== "undefined" && window.supabase && window.supabase.createClient)
+  ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
   : null;
 
 function setDefaultDateTime() {
@@ -59,8 +59,8 @@ function addRecord(date, period, time, systolic, diastolic, pulse) {
 async function loadRecords() {
   statusEl.textContent = "読み込み中...";
   try {
-    if (!supabase) throw new Error("Supabase クライアントが初期化されていません。");
-    const { data, error } = await supabase.from(TABLE_NAME).select("*").order("date", { ascending: true }).order("time", { ascending: true });
+    if (!supabaseClient) throw new Error("Supabase クライアントが初期化されていません。");
+    const { data, error } = await supabaseClient.from(TABLE_NAME).select("*").order("date", { ascending: true }).order("time", { ascending: true });
     if (error) throw error;
     records = (data || []).map((r) => ({
       date: r.date || "",
@@ -85,7 +85,7 @@ async function loadRecords() {
 
 async function saveRecordToSupabase(record) {
   try {
-    if (!supabase) throw new Error("Supabase クライアントが初期化されていません。");
+    if (!supabaseClient) throw new Error("Supabase クライアントが初期化されていません。");
     const payload = {
       date: record.date,
       period: record.period,
@@ -94,7 +94,7 @@ async function saveRecordToSupabase(record) {
       diastolic: record.diastolic,
       pulse: record.pulse
     };
-    const { error } = await supabase.from(TABLE_NAME).insert(payload);
+    const { error } = await supabaseClient.from(TABLE_NAME).insert(payload);
     if (error) throw error;
     return true;
   } catch (err) {
