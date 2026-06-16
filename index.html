@@ -7,11 +7,12 @@
   <link rel="stylesheet" href="style.css" />
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.9/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
   <header class="app-header">
     <h1>血圧記録</h1>
-    <p>Blood_Pressuer.xlsx の「記録」シートを読み込んで表示します</p>
+    <p>Supabaseに保存した血圧記録を表示します</p>
   </header>
 
   <nav class="tabs">
@@ -23,7 +24,7 @@
   <main>
     <section id="inputScreen" class="screen active">
       <h2>入力画面</h2>
-      <p class="notice">この初期版ではスマホ画面の入力UIだけ用意しています。GitHub PagesだけではExcelファイルへ直接保存できないため、保存機能は次の段階で実装方法を決めます。</p>
+      <p class="notice">入力した記録はSupabaseに保存されます。保存後、閲覧画面とグラフに反映されます。</p>
 
       <form id="bpForm" class="card form-grid">
         <label>
@@ -59,7 +60,7 @@
           <input id="pulse" type="number" inputmode="numeric" min="30" max="200" placeholder="例: 72" required />
         </label>
 
-        <button type="submit">画面上に一時追加</button>
+        <button type="submit">保存する</button>
       </form>
     </section>
 
