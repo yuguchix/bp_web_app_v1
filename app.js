@@ -8,8 +8,8 @@ const form = document.getElementById("bpForm");
 // Supabase 設定（必要に応じて変更してください）
 const SUPABASE_URL = "https://agomsalvejvuuskjvhds.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_cT19NXsteZNyHp5QIZ-Mpg_doRfcUmm";
-// 実際のテーブル名に合わせてください。サーバが示唆するならそれを使います。
-const TABLE_NAME = "blood_pressure_records"; // 例: "blood_pressure_records"
+// 実際のテーブル名に合わせてください。
+const TABLE_NAME = "blood_pressuer_records"; // 正しいテーブル名
 
 const supabaseClient = (typeof window !== "undefined" && window.supabase && window.supabase.createClient)
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
