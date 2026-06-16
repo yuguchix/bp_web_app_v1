@@ -1,29 +1,45 @@
-# 血圧記録WEBアプリ v1
+# 血圧記録WEBアプリ v2
 
-GitHub Pagesで `Blood_Pressuer.xlsx` の「記録」シートを読み込み、スマホで表とグラフを確認するための初期版です。
+GitHub Pages上で `Blood_Pressuer.xlsx` の「記録」シートを読み込み、表とグラフで表示する確認版です。
 
-## ファイル構成
+## 配置するファイル
+
+リポジトリの同じ階層に以下を置いてください。
 
 - `index.html`
 - `style.css`
 - `app.js`
-- `Blood_Pressuer.xlsx` ← ご自身のExcelをこの名前で同じフォルダに置いてください
+- `Blood_Pressuer.xlsx`
 
-## GitHub Pagesで確認する手順
+重要: Excelファイル名は `Blood_Pressuer.xlsx` にしてください。大文字・小文字、スペル、拡張子が違うと読み込めません。
 
-1. GitHubで新しいリポジトリを作成します。
-2. このフォルダ内の `index.html`, `style.css`, `app.js`, `Blood_Pressuer.xlsx` をアップロードします。
-3. GitHubの `Settings` → `Pages` を開きます。
-4. `Deploy from a branch` を選び、`main` / `root` を指定します。
-5. 表示されたURLをスマホで開きます。
+## 読み込み対象の列
 
-## 注意
+「記録」シートの以下の列を読み込みます。
 
-GitHub Pagesは静的WEBサーバなので、ブラウザからExcelファイルへ直接保存することはできません。
-このv1では「Excelを読み込んで表とグラフで見る」ことを確認します。
-入力データを永続保存するには、次のいずれかが必要です。
+- B列: 日付
+- C列: 朝の時間
+- D列: 朝の最高血圧
+- E列: 朝の最低血圧
+- F列: 朝の心拍数
+- G列: 夜の時間
+- H列: 夜の最高血圧
+- I列: 夜の最低血圧
+- J列: 夜の心拍数
 
-- 端末内保存: LocalStorage / IndexedDB
-- GitHubへ保存: GitHub API + 認証
-- Googleスプレッドシートへ保存: Apps Script
-- サーバDBへ保存: Supabase / Firebase など
+Excelの1行目が空で、2行目が見出しでも読み込めるようにしています。
+
+## スマホで確認する手順
+
+1. GitHubリポジトリに上記4ファイルをアップロードします。
+2. GitHub Pagesを有効化します。
+3. スマホでPagesのURLを開きます。
+4. 「閲覧」タブで表を確認します。
+5. 「グラフ」タブで推移を確認します。
+6. Excelを更新してGitHubへ再アップロードしたら、アプリの「Excelを再読み込み」を押します。
+
+## 現時点の制限
+
+GitHub Pagesは静的サイトのため、ブラウザからリポジトリ内のExcelファイルへ直接保存することはできません。
+このv2では「Excelを読み込んで閲覧する」確認を行います。
+入力内容をExcelへ保存する方法は、次の段階で GitHub API / Google Sheets / Firebase などから選びます。
