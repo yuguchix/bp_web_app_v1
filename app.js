@@ -53,10 +53,16 @@ function excelSerialDateToDate(value) {
   const serial = Number(value);
   if (!Number.isFinite(serial)) return "";
 
-  // Excel 1900日付シリアル。UTCで計算して日付ズレを避ける。
-  const utcDays = Math.floor(serial - 25569);
-  const date = new Date(utcDays * 86400 * 1000);
-  return formatDateUTC(date);
+  // Excel (Windows) の日付シリアルを Date に変換する。
+  // Excel は 1900 年をうるう年と誤認する歴史的バグがあるため、
+  // 便宜上基準日を 1899-12-30 として計算する方法が互換性が高い。
+  // また、小数部は時刻を表すのでミリ秒まで反映する。
+  const excelEpochUtc = Date.UTC(1899, 11, 30); // 1899-12-30
+  const days = Math.floor(serial);
+  const frac = serial - days;
+  const ms = Math.round(frac * 86400 * 1000);
+  const date = new Date(excelEpochUtc + days * 86400 * 1000 + ms);
+  return formatDateLocal(date);
 }
 
 function normalizeTime(value) {
