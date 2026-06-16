@@ -174,12 +174,17 @@ function renderChart() {
 }
 
 function setupTabs() {
-  document.querySelectorAll(".tab-button").forEach((button) => {
+  const buttons = document.querySelectorAll(".tab-button");
+  const screens = document.querySelectorAll(".screen");
+  if (!buttons.length || !screens.length) return;
+
+  buttons.forEach((button) => {
     button.addEventListener("click", () => {
-      document.querySelectorAll(".tab-button").forEach((b) => b.classList.remove("active"));
-      document.querySelectorAll(".screen").forEach((screen) => screen.classList.remove("active"));
+      buttons.forEach((b) => b.classList.remove("active"));
+      screens.forEach((screen) => screen.classList.remove("active"));
       button.classList.add("active");
-      document.getElementById(button.dataset.screen).classList.add("active");
+      const target = document.getElementById(button.dataset.screen);
+      if (target) target.classList.add("active");
       if (button.dataset.screen === "chartScreen" && chart) {
         setTimeout(() => chart.resize(), 50);
       }
@@ -210,7 +215,14 @@ form.addEventListener("submit", (event) => {
   })();
 });
 
-setupTabs();
-setDefaultDateTime();
-// 初期読み込みはSupabaseから
-loadRecords();
+window.addEventListener("DOMContentLoaded", () => {
+  try {
+    setupTabs();
+    setDefaultDateTime();
+    // Supabase から読み込んで初期表示
+    loadRecords().catch((e) => console.error(e));
+  } catch (err) {
+    console.error(err);
+    statusEl.textContent = `初期化エラー: ${err.message || err}`;
+  }
+});
