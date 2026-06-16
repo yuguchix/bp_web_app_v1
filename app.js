@@ -11,9 +11,30 @@ const SUPABASE_ANON_KEY = "sb_publishable_cT19NXsteZNyHp5QIZ-Mpg_doRfcUmm";
 // 実際のテーブル名に合わせてください。
 const TABLE_NAME = "blood_pressuer_records"; // 正しいテーブル名
 
-const supabaseClient = (typeof window !== "undefined" && window.supabase && window.supabase.createClient)
+let supabaseClient = (typeof window !== "undefined" && window.supabase && window.supabase.createClient)
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
   : null;
+
+// Supabase SDK の読み込みを待つ。タイムアウト（ms）内に初期化できなければ false を返す。
+async function ensureSupabaseClient(timeout = 5000) {
+  if (supabaseClient) return true;
+  const start = Date.now();
+  while (Date.now() - start < timeout) {
+    if (window.supabase && window.supabase.createClient) {
+      try {
+        supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        return true;
+      } catch (e) {
+        console.error('supabase createClient error', e);
+        return false;
+      }
+    }
+    // wait 150ms
+    // eslint-disable-next-line no-await-in-loop
+    await new Promise((r) => setTimeout(r, 150));
+  }
+  return false;
+}
 
 function setDefaultDateTime() {
   const now = new Date();
@@ -225,12 +246,18 @@ form.addEventListener("submit", (event) => {
   })();
 });
 
-window.addEventListener("DOMContentLoaded", () => {
+window.addEventListener("DOMContentLoaded", async () => {
   try {
     setupTabs();
     setDefaultDateTime();
-    // Supabase から読み込んで初期表示
-    loadRecords().catch((e) => console.error(e));
+    // Supabase SDK の読み込みを待ってから初期読み込み
+    const ok = await ensureSupabaseClient(5000);
+    if (!ok) {
+      statusEl.textContent = "Supabase SDK の初期化に失敗しました。ネットワークまたはスクリプト読み込みを確認してください。";
+      console.warn("Supabase SDK not available after timeout");
+      return;
+    }
+    await loadRecords();
   } catch (err) {
     console.error(err);
     statusEl.textContent = `初期化エラー: ${err.message || err}`;
