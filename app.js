@@ -153,19 +153,31 @@ function renderChart() {
           label: "最高血圧",
           data: records.map((record) => record.systolic),
           spanGaps: true,
-          tension: 0.25
+          tension: 0.25,
+          borderColor: "rgba(220,20,60,1)",
+          backgroundColor: "rgba(220,20,60,0.2)",
+          pointBackgroundColor: "rgba(220,20,60,1)",
+          pointBorderColor: "#fff"
         },
         {
           label: "最低血圧",
           data: records.map((record) => record.diastolic),
           spanGaps: true,
-          tension: 0.25
+          tension: 0.25,
+          borderColor: "rgba(30,144,255,1)",
+          backgroundColor: "rgba(30,144,255,0.2)",
+          pointBackgroundColor: "rgba(30,144,255,1)",
+          pointBorderColor: "#fff"
         },
         {
           label: "心拍数",
           data: records.map((record) => record.pulse),
           spanGaps: true,
-          tension: 0.25
+          tension: 0.25,
+          borderColor: "rgba(100,100,100,1)",
+          backgroundColor: "rgba(100,100,100,0.2)",
+          pointBackgroundColor: "rgba(100,100,100,1)",
+          pointBorderColor: "#fff"
         }
       ]
     },
