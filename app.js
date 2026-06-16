@@ -1,7 +1,7 @@
 const SUPABASE_URL = "https://agomsalvejvuuskjvhds.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_cT19NXsteZNyHp5QIZ-Mpg_doRfcUmm";
 
-const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+let db = null;
 
 let records = [];
 let chart = null;
@@ -28,6 +28,21 @@ function toNumber(value) {
 async function loadRecords() {
   statusEl.textContent = "Supabaseから読み込み中...";
   tableBody.innerHTML = "";
+
+  if (!db) {
+    statusEl.textContent = "Supabase クライアント初期化中...";
+    // ensureSupabaseClient is defined later; wait up to 5s
+    if (typeof ensureSupabaseClient === "function") {
+      const ok = await ensureSupabaseClient(5000);
+      if (!ok) {
+        statusEl.textContent = "Supabase SDK の読み込みに失敗しました。ネットワークやスクリプト読み込みを確認してください。";
+        return;
+      }
+    } else {
+      statusEl.textContent = "Supabase 初期化関数が見つかりません。";
+      return;
+    }
+  }
 
   const { data, error } = await db
     .from("blood_pressure_records")
@@ -215,8 +230,37 @@ form.addEventListener("submit", async (event) => {
   alert("保存しました");
 });
 
-document.getElementById("reloadButton").addEventListener("click", loadRecords);
+const reloadBtn = document.getElementById("reloadButton");
+if (reloadBtn) reloadBtn.addEventListener("click", loadRecords);
 
-setupTabs();
-setDefaultDateTime();
-loadRecords();
+// initialize after DOM and ensure Supabase SDK is loaded
+window.addEventListener("DOMContentLoaded", async () => {
+  try {
+    setupTabs();
+    setDefaultDateTime();
+    if (typeof ensureSupabaseClient === "function") await ensureSupabaseClient(5000);
+    await loadRecords();
+  } catch (err) {
+    console.error(err);
+    statusEl.textContent = `初期化エラー: ${err.message || err}`;
+  }
+});
+
+// Supabase SDK の読み込みを待って db を初期化するユーティリティ
+async function ensureSupabaseClient(timeout = 5000) {
+  if (db) return true;
+  const start = Date.now();
+  while (Date.now() - start < timeout) {
+    if (window.supabase && window.supabase.createClient) {
+      try {
+        db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        return true;
+      } catch (e) {
+        console.error('supabase createClient error', e);
+        return false;
+      }
+    }
+    await new Promise((r) => setTimeout(r, 150));
+  }
+  return false;
+}
