@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>血圧記録</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.9/dist/chart.umd.min.js"></script>
+</head>
+<body>
+  <header class="app-header">
+    <h1>血圧記録</h1>
+    <p>Blood_Pressuer.xlsx の「記録」シートを読み込んで表示します</p>
+  </header>
+
+  <nav class="tabs">
+    <button class="tab-button active" data-screen="inputScreen">入力</button>
+    <button class="tab-button" data-screen="tableScreen">閲覧</button>
+    <button class="tab-button" data-screen="chartScreen">グラフ</button>
+  </nav>
+
+  <main>
+    <section id="inputScreen" class="screen active">
+      <h2>入力画面</h2>
+      <p class="notice">この初期版ではスマホ画面の入力UIだけ用意しています。GitHub PagesだけではExcelファイルへ直接保存できないため、保存機能は次の段階で実装方法を決めます。</p>
+
+      <form id="bpForm" class="card form-grid">
+        <label>
+          測定区分
+          <select id="period" required>
+            <option value="morning">朝</option>
+            <option value="night">夜</option>
+          </select>
+        </label>
+
+        <label>
+          日付
+          <input id="date" type="date" required />
+        </label>
+
+        <label>
+          時間
+          <input id="time" type="time" required />
+        </label>
+
+        <label>
+          最高血圧
+          <input id="systolic" type="number" inputmode="numeric" min="50" max="250" placeholder="例: 135" required />
+        </label>
+
+        <label>
+          最低血圧
+          <input id="diastolic" type="number" inputmode="numeric" min="30" max="180" placeholder="例: 85" required />
+        </label>
+
+        <label>
+          心拍数
+          <input id="pulse" type="number" inputmode="numeric" min="30" max="200" placeholder="例: 72" required />
+        </label>
+
+        <button type="submit">画面上に一時追加</button>
+      </form>
+    </section>
+
+    <section id="tableScreen" class="screen">
+      <h2>閲覧画面</h2>
+      <div class="toolbar">
+        <button id="reloadButton">Excelを再読み込み</button>
+        <span id="status">読み込み前</span>
+      </div>
+      <div class="table-wrap card">
+        <table id="recordsTable">
+          <thead>
+            <tr>
+              <th>日付</th>
+              <th>区分</th>
+              <th>時間</th>
+              <th>最高</th>
+              <th>最低</th>
+              <th>心拍数</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="chartScreen" class="screen">
+      <h2>グラフ画面</h2>
+      <div class="card chart-card">
+        <canvas id="bpChart"></canvas>
+      </div>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
