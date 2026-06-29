@@ -245,6 +245,52 @@ form.addEventListener("submit", async (event) => {
 const reloadBtn = document.getElementById("reloadButton");
 if (reloadBtn) reloadBtn.addEventListener("click", loadRecords);
 
+function exportRecordsToExcel() {
+  if (!records.length) {
+    alert("エクスポートするデータがありません。");
+    return;
+  }
+
+  const worksheetData = [
+    ["日付", "区分", "時間", "最高血圧", "最低血圧", "心拍数"],
+    ...records.map((record) => [
+      record.date,
+      record.period,
+      record.time,
+      record.systolic ?? "",
+      record.diastolic ?? "",
+      record.pulse ?? ""
+    ])
+  ];
+
+  const worksheet = window.XLSX.utils.aoa_to_sheet(worksheetData);
+  worksheet["!cols"] = [
+    { width: 14 },
+    { width: 8 },
+    { width: 10 },
+    { width: 12 },
+    { width: 12 },
+    { width: 10 }
+  ];
+
+  const workbook = window.XLSX.utils.book_new();
+  window.XLSX.utils.book_append_sheet(workbook, worksheet, "血圧記録");
+
+  const stamp = new Date().toISOString().slice(0, 10);
+  window.XLSX.writeFile(workbook, `blood_pressure_records_${stamp}.xlsx`);
+}
+
+const exportButton = document.getElementById("exportButton");
+if (exportButton) {
+  exportButton.addEventListener("click", () => {
+    if (!window.XLSX) {
+      alert("Excel エクスポート用ライブラリの読み込みに失敗しました。ページを再読み込みしてください。");
+      return;
+    }
+    exportRecordsToExcel();
+  });
+}
+
 // initialize after DOM and ensure Supabase SDK is loaded
 window.addEventListener("DOMContentLoaded", async () => {
   try {

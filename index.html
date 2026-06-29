@@ -7,6 +7,7 @@
   <link rel="stylesheet" href="style.css" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.9/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.1/dist/xlsx.full.min.js"></script>
 </head>
 <body>
   <header class="app-header">
@@ -67,6 +68,7 @@
       <h2>閲覧画面</h2>
       <div class="toolbar">
         <span id="status">読み込み前</span>
+        <button id="exportButton" type="button">Excelにエクスポート</button>
       </div>
       <div class="table-wrap card">
         <table id="recordsTable">
